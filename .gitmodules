@@ -1,0 +1,6 @@
+[submodule "defihackLabs"]
+	path = defihackLabs
+	url = https://github.com/pranay5255/DeFiHackLabs.git
+[submodule "yudai-swe-agent"]
+	path = yudai-swe-agent
+	url = https://github.com/pranay5255/yudai-swe-agent.git
