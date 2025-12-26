@@ -1,0 +1,262 @@
+# Smart Contract Security Data Sources Configuration
+# Based on dataSorucesReport.md
+
+github_repos:
+  # Key Aggregators and Awesome Lists
+  aggregators:
+    - name: "Awesome Smart Contract Security (Saeidshirazi)"
+      url: "https://github.com/saeidshirazi/Awesome-Smart-Contract-Security"
+      data_types: ["md", "links"]
+      priority: high
+
+    - name: "Awesome Smart Contract Security (Moeinfatehi)"
+      url: "https://github.com/moeinfatehi/Awesome-Smart-Contract-Security"
+      data_types: ["md", "articles"]
+      priority: high
+
+    - name: "Awesome Ethereum Security (Crytic)"
+      url: "https://github.com/crytic/awesome-ethereum-security"
+      data_types: ["md", "tools"]
+      priority: high
+
+    - name: "Awesome Smart Contract Datasets"
+      url: "https://github.com/acorn421/awesome-smart-contract-datasets"
+      data_types: ["md", "dataset_links"]
+      priority: medium
+
+  # Audit Report Repositories
+  audit_repos:
+    - name: "Sherlock Reports"
+      url: "https://github.com/sherlock-protocol/sherlock-reports"
+      data_types: ["md", "pdf"]
+      priority: high
+
+    - name: "Cyfrin Audit Reports"
+      url: "https://github.com/Cyfrin/cyfrin-audit-reports"
+      data_types: ["md", "pdf"]
+      priority: high
+
+    - name: "Pashov Audits"
+      url: "https://github.com/pashov/audits"
+      data_types: ["pdf", "md"]
+      subdirs: ["solo", "team"]
+      priority: high
+
+    - name: "SigP Public Audits"
+      url: "https://github.com/sigp/public-audits"
+      data_types: ["md", "pdf"]
+      priority: high
+
+    - name: "Hexens Public Reports"
+      url: "https://github.com/Hexens/Smart-Contract-Review-Public-Reports"
+      data_types: ["md", "pdf"]
+      priority: high
+
+    - name: "TechRate Audits"
+      url: "https://github.com/TechRate/Smart-Contract-Audits"
+      data_types: ["md", "pdf"]
+      priority: medium
+
+    - name: "ImmuneBytes Reports"
+      url: "https://github.com/ImmuneBytes/Smart-Contract-Audit-Reports"
+      data_types: ["md", "pdf"]
+      priority: medium
+
+    - name: "MixBytes Public Audits"
+      url: "https://github.com/mixbytes/audits_public"
+      data_types: ["md", "pdf"]
+      priority: high
+
+    - name: "EthereumCommonwealth Auditing"
+      url: "https://github.com/EthereumCommonwealth/Auditing"
+      data_types: ["md"]
+      priority: medium
+
+    - name: "Nethermind Public Reports"
+      url: "https://github.com/NethermindEth/PublicAuditReports"
+      data_types: ["pdf"]
+      priority: high
+
+    - name: "Halborn Public Reports"
+      url: "https://github.com/HalbornSecurity/PublicReports"
+      data_types: ["md", "pdf"]
+      priority: medium
+
+    - name: "Credshields Audit Reports"
+      url: "https://github.com/Credshields/audit-reports"
+      data_types: ["md"]
+      priority: medium
+
+  # Vulnerability Datasets
+  vulnerability_datasets:
+    - name: "SmartBugs Curated"
+      url: "https://github.com/smartbugs/smartbugs-curated"
+      data_types: ["solidity"]
+      stats: "143 contracts, 208 vulnerabilities"
+      priority: high
+
+    - name: "SmartBugs Wild"
+      url: "https://github.com/smartbugs/smartbugs-wild"
+      data_types: ["solidity"]
+      stats: "47,398 contracts"
+      priority: high
+
+    - name: "SolidiFI Benchmark"
+      url: "https://github.com/DependableSystemsLab/SolidiFI-benchmark"
+      data_types: ["solidity"]
+      stats: "9,369 bugs in 7 types"
+      priority: high
+
+    - name: "Tintinweb VulnDB"
+      url: "https://github.com/tintinweb/smart-contract-vulndb"
+      data_types: ["json"]
+      priority: high
+
+  # Educational and Puzzle Repos
+  educational:
+    - name: "RareSkills Huff Puzzles"
+      url: "https://github.com/RareSkills/huff-puzzles"
+      data_types: ["code", "puzzles"]
+      priority: high
+
+    - name: "RareSkills Solidity Riddles"
+      url: "https://github.com/RareSkills/solidity-riddles"
+      data_types: ["solidity", "puzzles"]
+      priority: high
+
+    - name: "RareSkills Gas Puzzles"
+      url: "https://github.com/RareSkills/gas-puzzles"
+      data_types: ["solidity", "puzzles"]
+      priority: high
+
+    - name: "Cyfrin Foundry Course"
+      url: "https://github.com/Cyfrin/foundry-full-course-cu"
+      data_types: ["md", "solidity"]
+      priority: high
+
+    - name: "OpenZeppelin Contracts"
+      url: "https://github.com/OpenZeppelin/openzeppelin-contracts"
+      data_types: ["solidity"]
+      priority: high
+
+web_scrapers:
+  # Audit Platforms
+  audit_platforms:
+    - name: "Code4rena Reports"
+      base_url: "https://code4rena.com"
+      endpoints:
+        - "/reports"
+        - "/audits"
+      data_types: ["html", "md"]
+      requires_js: false
+      priority: high
+
+    - name: "Sherlock Audits"
+      base_url: "https://audits.sherlock.xyz"
+      endpoints:
+        - "/contests"
+      data_types: ["html", "pdf"]
+      requires_js: true
+      priority: high
+
+    - name: "CodeHawks Contests"
+      base_url: "https://codehawks.cyfrin.io"
+      endpoints:
+        - "/c/"
+      data_types: ["html", "md"]
+      requires_js: true
+      priority: high
+
+    - name: "Solodit"
+      base_url: "https://solodit.xyz"
+      endpoints:
+        - "/"
+      data_types: ["md", "pdf"]
+      requires_js: true
+      stats: "49,956+ results"
+      priority: high
+
+  # Exploit Analysis Sites
+  exploit_sites:
+    - name: "Rekt News"
+      base_url: "https://rekt.news"
+      endpoints:
+        - "/"
+      data_types: ["html"]
+      pagination: true
+      priority: high
+
+    - name: "Trail of Bits Blog"
+      base_url: "https://blog.trailofbits.com"
+      endpoints:
+        - "/category/blockchain"
+        - "/category/security"
+      data_types: ["html"]
+      pagination: true
+      priority: high
+
+    - name: "Immunefi"
+      base_url: "https://immunefi.com"
+      endpoints:
+        - "/bug-bounty"
+      data_types: ["html"]
+      requires_js: true
+      priority: medium
+
+  # Documentation Sites
+  documentation:
+    - name: "Consensys Best Practices"
+      base_url: "https://consensys.github.io/smart-contract-best-practices"
+      endpoints:
+        - "/"
+      data_types: ["html"]
+      priority: medium
+
+    - name: "SWC Registry"
+      base_url: "https://swcregistry.io"
+      endpoints:
+        - "/"
+      data_types: ["html"]
+      priority: medium
+
+    - name: "OWASP Smart Contract Top 10"
+      base_url: "https://owasp.org/www-project-smart-contract-top-10"
+      endpoints:
+        - "/"
+      data_types: ["html"]
+      priority: medium
+
+    - name: "OpenZeppelin Docs"
+      base_url: "https://docs.openzeppelin.com"
+      endpoints:
+        - "/contracts"
+      data_types: ["html"]
+      priority: medium
+
+    - name: "Secureum Substack"
+      base_url: "https://secureum.substack.com"
+      endpoints:
+        - "/archive"
+      data_types: ["html"]
+      priority: high
+
+dataset_downloads:
+  kaggle:
+    - name: "Smart Contract Vulnerability Dataset"
+      dataset_id: "tranduongminhdai/smart-contract-vulnerability-datset"
+      data_types: ["solidity", "csv"]
+      stats: "12k+ contracts"
+      priority: high
+
+    - name: "BCCC-VulSCs-2023"
+      dataset_id: "bcccdatasets/bccc-vulscs-2023"
+      data_types: ["solidity", "features"]
+      stats: "36,670 samples"
+      priority: high
+
+  huggingface:
+    - name: "Zellic Smart Contract Fiesta"
+      dataset_id: "Zellic/smart-contract-fiesta"
+      data_types: ["solidity"]
+      stats: "3,298,271 raw files, 514,506 deduplicated"
+      priority: high
