@@ -4,53 +4,89 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Python-based data collection system for gathering smart contract security training data from 40+ public sources (audit reports, vulnerability datasets, exploit analyses, educational materials from GitHub, Code4rena, Sherlock, Kaggle, HuggingFace, etc.).
+**Purpose:** Data collection + experiment planning for a smart contract vulnerability detection model (1B-3B parameters).
+
+**Scope:** This repo handles data gathering and experiment configuration ONLY. No actual training code - training runs on separate infrastructure.
+
+**Key Documents:**
+- `PRD.md` - Complete project requirements, model architecture, training pipeline
+- `TASKS.md` - Implementation tasks with specifications
+- `archive/` - Reference documents (dataSorucesReport.md, compass research)
+
+## Project Goals
+
+Train a model achieving:
+- **>35% precision** (vs GPT-4 baseline: 22%)
+- **>70% recall** (vs GPT-4 baseline: 88%)
+- **>0.45 F1 macro** across 5 primary SWC vulnerability types
 
 ## Commands
 
 ```bash
 # Setup (from project root)
-cd crawlers && python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+python -m venv venv && source venv/bin/activate
+pip install -r crawlers/requirements.txt
 cp .env.example .env  # Add API keys
 
 # Run tests
 pytest tests/ -v
-pytest tests/test_cloners.py -v  # Single test file
-pytest -m "not slow"             # Skip slow tests
-pytest -m integration            # Only integration tests
+pytest -m "not slow"
 
 # Verify YAML config
 python3 -c "import yaml; yaml.safe_load(open('crawlers/config/sources.yaml'))" && echo "OK"
 
-# Test GitHub cloner manually
+# Clone all repos
 python3 -c "
 import sys; sys.path.insert(0, 'crawlers')
 from cloners.github_cloner import GitHubCloner
 from utils.helpers import load_sources_config
 cloner = GitHubCloner()
-result = cloner.clone_repo('https://github.com/smartbugs/smartbugs-curated', 'test', 'high')
-print(f'Status: {result.status}, Path: {result.local_path}')
+results = cloner.clone_all_from_config(load_sources_config())
+print(cloner.get_status_summary(results))
 "
 ```
 
 ## Architecture
 
 ```
-crawlers/                     # Main package (run from project root with sys.path.insert)
-├── config/
-│   ├── settings.py          # Env vars, paths, rate limits (REPOS_DIR, GITHUB_TOKEN, etc.)
-│   └── sources.yaml         # All 40+ data sources declaratively defined
-├── cloners/
-│   └── github_cloner.py     # GitHubCloner class - clone/update repos with rate limiting
-├── scrapers/                # NOT IMPLEMENTED - web scraping for audit platforms
-├── downloaders/             # NOT IMPLEMENTED - Kaggle/HuggingFace downloads
-├── processors/              # NOT IMPLEMENTED - normalize to JSONL, dedupe, index
-├── utils/
-│   ├── helpers.py           # load_sources_config(), extract_repo_info(), file utils
-│   └── logger.py            # Loguru setup with file rotation
-└── output/                  # repos/, reports/, datasets/, exploits/
+smart-contract-data/
+├── crawlers/                    # Data collection package
+│   ├── config/
+│   │   ├── settings.py          # Env vars, paths, rate limits
+│   │   └── sources.yaml         # 40+ data source definitions
+│   ├── cloners/                 # GitHub repo handlers [DONE]
+│   ├── scrapers/                # Web scraping [TODO]
+│   ├── downloaders/             # Kaggle/HuggingFace [TODO]
+│   ├── processors/              # Normalize to JSONL [TODO]
+│   └── utils/                   # Helpers, logging [DONE]
+│
+├── experiments/                 # Experiment configs [TODO]
+│   ├── ablations/               # YAML configs for ablation runs
+│   ├── final/                   # Final training configs
+│   └── evaluation/              # Eval harness scripts
+│
+├── synthetic/                   # Synthetic data generation [TODO]
+│   ├── hexacoder_pipeline.py
+│   ├── mini_swe_agent_runner.py
+│   └── foundry_validator.py
+│
+├── output/                      # Collected data
+├── archive/                     # Reference documents
+├── PRD.md                       # Project requirements
+├── TASKS.md                     # Implementation tasks
+└── CLAUDE.md                    # This file
 ```
+
+## Key Decisions (from PRD.md)
+
+| Decision | Choice |
+|----------|--------|
+| Task | Hybrid: Multi-label + Generative explanation |
+| Vulnerabilities | 5 primary SWC types (107, 101, 115, 104, 114) |
+| Ablation Models | SmolLM2-135M/360M, Qwen2.5-0.5B, Baguettotron-321M |
+| Final Model | Qwen2.5-Coder-3B |
+| Pipeline | Continued Pretraining → SFT → DPO → GRPO |
+| Training Libs | LLaMA-Factory (CPT), Unsloth+TRL (SFT), TRL (DPO/GRPO) |
 
 ## Key Patterns
 
@@ -70,24 +106,17 @@ config = load_sources_config()  # Returns dict from sources.yaml
 # config['web_scrapers']['audit_platforms'] -> list of scraper configs
 ```
 
-**Cloner usage**:
-```python
-cloner = GitHubCloner()
-results = cloner.clone_all_from_config(config)  # Returns list[RepoInfo]
-summary = cloner.get_status_summary(results)    # Returns dict with counts
-```
-
 ## Implementation Status
 
-| Component | Status |
-|-----------|--------|
-| config/, utils/ | Done |
-| cloners/github_cloner.py | Done |
-| scrapers/ | Empty - needs base_scraper.py, audit_scrapers.py, exploit_scrapers.py |
-| downloaders/ | Empty - needs kaggle_downloader.py, hf_downloader.py |
-| processors/ | Empty - needs normalizer.py, extractor.py, deduplicator.py, indexer.py |
-| cli.py, orchestrator.py | Not created |
-| tests/test_*.py | Fixtures only (conftest.py), no actual tests |
+| Component | Status | Next Steps |
+|-----------|--------|------------|
+| config/, utils/ | ✅ Done | - |
+| cloners/ | ✅ Done | Add submodule_handler.py |
+| scrapers/ | ⚪ TODO | See TASKS.md Phase 1.2 |
+| downloaders/ | ⚪ TODO | See TASKS.md Phase 1.3 |
+| processors/ | ⚪ TODO | See TASKS.md Phase 2 |
+| synthetic/ | ⚪ TODO | See TASKS.md Phase 3 |
+| experiments/ | ⚪ TODO | See TASKS.md Phase 4 |
 
 ## Environment Variables
 
@@ -95,19 +124,34 @@ Required in `.env`:
 - `GITHUB_TOKEN` - GitHub API token (5000 req/hr authenticated)
 - `KAGGLE_USERNAME`, `KAGGLE_KEY` - For Kaggle dataset downloads
 - `HUGGINGFACE_TOKEN` - For HuggingFace dataset access
+- `OPENAI_API_KEY` - For synthetic data generation (HexaCoder)
 - `LOG_LEVEL` - Optional, defaults to INFO
 
-## Output Schema Target
+## Output Schema
 
 ```json
 {
-  "id": "unique-hash",
-  "source": "code4rena",
+  "id": "sha256-hash",
+  "source": "smartbugs-curated",
   "type": "vulnerability",
+  "swc_id": "SWC-107",
+  "cwe_id": "CWE-841",
   "severity": "high",
   "title": "Reentrancy in withdraw()",
   "description": "...",
-  "code_snippet": "...",
+  "code_snippet": "function withdraw() { ... }",
+  "file_path": "contracts/Vault.sol",
+  "line_numbers": [45, 52],
   "tags": ["reentrancy", "defi"]
 }
 ```
+
+## Data Sources (Priority)
+
+| Source | Type | Size | Priority |
+|--------|------|------|----------|
+| SmartBugs-curated | Labeled vulns | 143 contracts | HIGH |
+| Zellic/smart-contract-fiesta | Solidity code | 514K contracts | HIGH |
+| DeFiHackLabs | Exploits | 550+ incidents | HIGH |
+| Code4rena, Sherlock | Audit reports | 1000+ | HIGH |
+| Kaggle SC Vulnerability | Labeled | 12K+ | HIGH |
