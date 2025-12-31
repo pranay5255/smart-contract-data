@@ -112,6 +112,12 @@ github_repos:
       data_types: ["json"]
       priority: high
 
+    - name: "DeFiHackLabs"
+      url: "https://github.com/SunWeb3Sec/DeFiHackLabs"
+      data_types: ["solidity", "md"]
+      stats: "550+ exploit PoCs"
+      priority: high
+
   # Educational and Puzzle Repos
   educational:
     - name: "RareSkills Huff Puzzles"
