@@ -1,0 +1,15 @@
+2026-01-03 18:53:43 | WARNING  | downloaders.kaggle_downloader:__init__:70 - Kaggle credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY or create ~/.kaggle/kaggle.json via `kaggle config set`.
+2026-01-03 18:53:43 | INFO     | downloaders.kaggle_downloader:download_dataset:243 - Downloading dataset: tranduongminhdai/smart-contract-vulnerability-datset
+2026-01-03 18:53:48 | DEBUG    | downloaders.kaggle_downloader:_save_metadata:272 - Saved metadata: /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/kaggle/tranduongminhdai_smart-contract-vulnerability-datset/metadata.json
+2026-01-03 18:53:48 | INFO     | downloaders.kaggle_downloader:download_dataset:258 - Successfully downloaded: tranduongminhdai/smart-contract-vulnerability-datset -> /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/kaggle/tranduongminhdai_smart-contract-vulnerability-datset
+2026-01-03 18:53:48 | INFO     | downloaders.kaggle_downloader:download_dataset:243 - Downloading dataset: bcccdatasets/bccc-vulscs-2023
+2026-01-03 18:54:02 | DEBUG    | downloaders.kaggle_downloader:_save_metadata:272 - Saved metadata: /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/kaggle/bcccdatasets_bccc-vulscs-2023/metadata.json
+2026-01-03 18:54:02 | INFO     | downloaders.kaggle_downloader:download_dataset:258 - Successfully downloaded: bcccdatasets/bccc-vulscs-2023 -> /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/kaggle/bcccdatasets_bccc-vulscs-2023
+2026-01-03 18:54:02 | INFO     | __main__:_summarize_dataset_results:27 - Kaggle datasets: success=2 failed=0
+2026-01-03 20:25:36 | INFO     | downloaders.hf_downloader:download_dataset:304 - Downloading dataset: Zellic/smart-contract-fiesta
+2026-01-03 20:25:36 | INFO     | downloaders.hf_downloader:_download_via_cli:210 - Using HuggingFace CLI for: Zellic/smart-contract-fiesta
+2026-01-03 20:25:36 | ERROR    | downloaders.hf_downloader:download_dataset:333 - Failed to download Zellic/smart-contract-fiesta: HuggingFace CLI command failed: /home/pranay5255/Documents/smart-contract-data/.venv/bin/hf download Zellic/smart-contract-fiesta --repo-type dataset --local-dir /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/huggingface/Zellic_smart-contract-fiesta --local-dir-use-symlinks False
+2026-01-03 20:25:36 | ERROR    | downloaders.hf_downloader:download_all_defaults:450 - Failed to download Zellic/smart-contract-fiesta: HuggingFace CLI command failed: /home/pranay5255/Documents/smart-contract-data/.venv/bin/hf download Zellic/smart-contract-fiesta --repo-type dataset --local-dir /home/pranay5255/Documents/smart-contract-data/crawlers/output/datasets/huggingface/Zellic_smart-contract-fiesta --local-dir-use-symlinks False
+2026-01-03 20:25:36 | INFO     | __main__:_summarize_dataset_results:27 - HuggingFace datasets: success=0 failed=1
+2026-01-03 20:31:09 | INFO     | downloaders.hf_downloader:download_dataset:310 - Downloading dataset: Zellic/smart-contract-fiesta
+2026-01-03 20:31:09 | INFO     | downloaders.hf_downloader:_download_via_cli:213 - Using HuggingFace CLI for: Zellic/smart-contract-fiesta
