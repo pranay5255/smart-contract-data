@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Optional, Union
 
 from config.settings import DATASETS_DIR, HUGGINGFACE_TOKEN
-from utils.helpers import ensure_dir, sanitize_filename
+from utils.helpers import ensure_dir, sanitize_filename, load_sources_config
 from utils.logger import log
 from utils.rate_limiter import get_rate_limiter
 
@@ -38,21 +40,71 @@ class HuggingFaceDownloader:
         },
     ]
 
-    def __init__(self, output_dir: Optional[Path] = None, token: Optional[str] = None):
+    def __init__(
+        self,
+        output_dir: Optional[Path] = None,
+        token: Optional[str] = None,
+        datasets: Optional[list[dict]] = None,
+    ):
         """
         Initialize HuggingFace downloader.
 
         Args:
             output_dir: Directory to save datasets. Defaults to settings.DATASETS_DIR/huggingface
             token: HuggingFace API token. Defaults to HUGGINGFACE_TOKEN env var.
+            datasets: Optional list of dataset configs overriding defaults.
         """
         self.output_dir = ensure_dir(output_dir or DATASETS_DIR / "huggingface")
         self.token = token or HUGGINGFACE_TOKEN
         self.rate_limiter = get_rate_limiter()
+        self.default_datasets = datasets or self._load_default_datasets()
+        self.hf_cli = shutil.which("hf") or shutil.which("huggingface-cli")
+        self.cli_available = self.hf_cli is not None
+
+        if not self.cli_available:
+            log.warning(
+                "HuggingFace CLI not found in PATH. Install `huggingface-hub` to enable CLI downloads."
+            )
 
         if self.token:
             os.environ["HF_TOKEN"] = self.token
             log.debug("HuggingFace token configured")
+
+    def _ensure_cli(self) -> str:
+        """Ensure the HuggingFace CLI is available."""
+        if not self.hf_cli:
+            raise RuntimeError(
+                "HuggingFace CLI not found. Install `huggingface-hub` and ensure `hf` is in PATH."
+            )
+        return self.hf_cli
+
+    def _run_hf(
+        self,
+        args: list[str],
+        capture_output: bool = True,
+        extra_env: Optional[dict[str, str]] = None,
+    ) -> subprocess.CompletedProcess:
+        """Run a HuggingFace CLI command."""
+        cmd = [self._ensure_cli(), *args]
+        env = os.environ.copy()
+        if self.token:
+            env.setdefault("HF_TOKEN", self.token)
+            env.setdefault("HUGGINGFACE_HUB_TOKEN", self.token)
+        if extra_env:
+            env.update(extra_env)
+        try:
+            return subprocess.run(
+                cmd,
+                check=True,
+                text=True,
+                capture_output=capture_output,
+                env=env,
+            )
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() if exc.stderr else ""
+            if stderr:
+                log.error(f"HuggingFace CLI error: {stderr}")
+            raise RuntimeError(f"HuggingFace CLI command failed: {' '.join(cmd)}") from exc
 
     def _get_datasets_library(self):
         """Import and return the datasets library."""
@@ -71,6 +123,38 @@ class HuggingFaceDownloader:
         except ImportError as exc:
             log.error("huggingface_hub not installed. Run: pip install huggingface-hub")
             raise RuntimeError("huggingface_hub package required") from exc
+
+    def _load_default_datasets(self) -> list[dict]:
+        """Load default datasets from config/sources.yaml, with fallback defaults."""
+        try:
+            config = load_sources_config()
+        except Exception:
+            return self.DEFAULT_DATASETS
+
+        datasets = []
+        for entry in config.get("dataset_downloads", {}).get("huggingface", []):
+            dataset_id = entry.get("dataset_id")
+            if not dataset_id:
+                continue
+            datasets.append(
+                {
+                    "dataset_id": dataset_id,
+                    "description": entry.get("stats") or entry.get("name") or dataset_id,
+                    "priority": entry.get("priority", "medium"),
+                    "config": entry.get("config"),
+                    "split": entry.get("split"),
+                }
+            )
+
+        return datasets or self.DEFAULT_DATASETS
+
+    def _dataset_dir(self, dataset_id: str, force: bool = False) -> Path:
+        """Resolve the output directory for a dataset."""
+        safe_name = sanitize_filename(dataset_id.replace("/", "_"))
+        dataset_dir = self.output_dir / safe_name
+        if force and dataset_dir.exists():
+            shutil.rmtree(dataset_dir)
+        return ensure_dir(dataset_dir)
 
     def get_dataset_info(self, dataset_id: str) -> dict:
         """
@@ -118,6 +202,81 @@ class HuggingFaceDownloader:
 
         return [{"path": f} for f in files]
 
+    def _download_via_cli(
+        self,
+        dataset_id: str,
+        dataset_dir: Path,
+        config: Optional[str],
+        split: Optional[str],
+    ) -> Path:
+        """Download a dataset repo snapshot using the HuggingFace CLI."""
+        log.info(f"Using HuggingFace CLI for: {dataset_id}")
+        with self.rate_limiter.limit(self.SERVICE_NAME):
+            cmd = [
+                "download",
+                dataset_id,
+                "--repo-type",
+                "dataset",
+                "--local-dir",
+                str(dataset_dir),
+            ]
+            extra_env = None
+            if self._cli_supports_local_dir_use_symlinks():
+                cmd.extend(["--local-dir-use-symlinks", "False"])
+            else:
+                extra_env = {"HF_HUB_DISABLE_SYMLINKS": "1"}
+            self._run_hf(cmd, capture_output=False, extra_env=extra_env)
+
+        # Create completion marker
+        marker_file = dataset_dir / ".download_complete"
+        marker_file.touch()
+
+        # Save metadata
+        self._save_metadata(dataset_id, dataset_dir, config, split)
+
+        log.info(f"Successfully downloaded: {dataset_id} -> {dataset_dir}")
+        return dataset_dir
+
+    def _download_via_datasets(
+        self,
+        dataset_id: str,
+        dataset_dir: Path,
+        config: Optional[str],
+        split: Optional[str],
+        streaming: bool,
+    ) -> Path:
+        """Download a dataset using the datasets library."""
+        datasets = self._get_datasets_library()
+
+        with self.rate_limiter.limit(self.SERVICE_NAME):
+            dataset = datasets.load_dataset(
+                dataset_id,
+                name=config,
+                split=split,
+                token=self.token,
+                streaming=streaming,
+                trust_remote_code=True,
+            )
+
+        if streaming:
+            log.info(f"Streaming dataset verified: {dataset_id}")
+            return dataset_dir
+
+        if isinstance(dataset, datasets.DatasetDict):
+            for split_name, split_data in dataset.items():
+                split_path = dataset_dir / split_name
+                log.info(f"Saving {split_name} split: {len(split_data)} examples")
+                split_data.save_to_disk(str(split_path))
+        else:
+            log.info(f"Saving dataset: {len(dataset)} examples")
+            dataset.save_to_disk(str(dataset_dir / "data"))
+
+        marker_file = dataset_dir / ".download_complete"
+        marker_file.touch()
+        self._save_metadata(dataset_id, dataset_dir, config, split)
+        log.info(f"Successfully downloaded: {dataset_id} -> {dataset_dir}")
+        return dataset_dir
+
     def download_dataset(
         self,
         dataset_id: str,
@@ -139,11 +298,8 @@ class HuggingFaceDownloader:
         Returns:
             Path to downloaded dataset directory
         """
-        datasets = self._get_datasets_library()
-
         # Create dataset directory
-        safe_name = sanitize_filename(dataset_id.replace("/", "_"))
-        dataset_dir = ensure_dir(self.output_dir / safe_name)
+        dataset_dir = self._dataset_dir(dataset_id, force=force)
 
         # Check if already downloaded
         marker_file = dataset_dir / ".download_complete"
@@ -154,42 +310,30 @@ class HuggingFaceDownloader:
         log.info(f"Downloading dataset: {dataset_id}")
 
         try:
-            with self.rate_limiter.limit(self.SERVICE_NAME):
-                # Load dataset
-                dataset = datasets.load_dataset(
+            if streaming:
+                return self._download_via_datasets(
                     dataset_id,
-                    name=config,
-                    split=split,
-                    token=self.token,
-                    streaming=streaming,
-                    trust_remote_code=True,
+                    dataset_dir,
+                    config,
+                    split,
+                    streaming=True,
                 )
 
-            if streaming:
-                # For streaming, just verify it works
-                log.info(f"Streaming dataset verified: {dataset_id}")
-                return dataset_dir
+            if self.cli_available and not config and not split:
+                return self._download_via_cli(dataset_id, dataset_dir, config, split)
 
-            # Save to disk
-            if isinstance(dataset, datasets.DatasetDict):
-                # Multiple splits
-                for split_name, split_data in dataset.items():
-                    split_path = dataset_dir / split_name
-                    log.info(f"Saving {split_name} split: {len(split_data)} examples")
-                    split_data.save_to_disk(str(split_path))
-            else:
-                # Single split
-                log.info(f"Saving dataset: {len(dataset)} examples")
-                dataset.save_to_disk(str(dataset_dir / "data"))
+            if not self.cli_available:
+                log.warning("HuggingFace CLI not available; falling back to datasets.")
+            elif config or split:
+                log.info("Dataset config/split requested; using datasets library.")
 
-            # Create completion marker
-            marker_file.touch()
-
-            # Save metadata
-            self._save_metadata(dataset_id, dataset_dir, config, split)
-
-            log.info(f"Successfully downloaded: {dataset_id} -> {dataset_dir}")
-            return dataset_dir
+            return self._download_via_datasets(
+                dataset_id,
+                dataset_dir,
+                config,
+                split,
+                streaming=False,
+            )
 
         except Exception as exc:
             log.error(f"Failed to download {dataset_id}: {exc}")
@@ -217,8 +361,7 @@ class HuggingFaceDownloader:
         HfApi, hf_hub_download = self._get_hub_library()
         api = HfApi(token=self.token)
 
-        safe_name = sanitize_filename(dataset_id.replace("/", "_"))
-        dataset_dir = ensure_dir(self.output_dir / safe_name)
+        dataset_dir = self._dataset_dir(dataset_id, force=False)
 
         # Get file list
         files = self.list_dataset_files(dataset_id)
@@ -296,7 +439,7 @@ class HuggingFaceDownloader:
         """
         results = {}
 
-        for dataset_info in self.DEFAULT_DATASETS:
+        for dataset_info in self.default_datasets:
             dataset_id = dataset_info["dataset_id"]
             config = dataset_info.get("config")
             split = dataset_info.get("split")
@@ -356,7 +499,14 @@ class HuggingFaceDownloader:
             if dataset_dict:
                 return datasets.DatasetDict(dataset_dict)
 
-        raise ValueError(f"Could not load dataset from {dataset_dir}")
+        # Fallback for CLI-downloaded repo snapshots
+        return datasets.load_dataset(
+            str(dataset_dir),
+            name=config,
+            split=split,
+            token=self.token,
+            trust_remote_code=True,
+        )
 
     def get_status(self) -> dict:
         """
@@ -367,7 +517,7 @@ class HuggingFaceDownloader:
         """
         status = {}
 
-        for dataset_info in self.DEFAULT_DATASETS:
+        for dataset_info in self.default_datasets:
             dataset_id = dataset_info["dataset_id"]
             safe_name = sanitize_filename(dataset_id.replace("/", "_"))
             dataset_dir = self.output_dir / safe_name
@@ -390,6 +540,21 @@ class HuggingFaceDownloader:
 
         return status
 
+    def _cli_supports_local_dir_use_symlinks(self) -> bool:
+        """Check if the HuggingFace CLI supports --local-dir-use-symlinks."""
+        cached = getattr(self, "_supports_local_dir_use_symlinks", None)
+        if cached is not None:
+            return cached
+        try:
+            result = self._run_hf(["download", "--help"], capture_output=True)
+        except Exception:
+            self._supports_local_dir_use_symlinks = False
+            return False
+        output = "\n".join([result.stdout or "", result.stderr or ""])
+        supported = "--local-dir-use-symlinks" in output
+        self._supports_local_dir_use_symlinks = supported
+        return supported
+
 
 def download_huggingface_datasets(force: bool = False) -> dict[str, Path]:
     """
@@ -403,4 +568,3 @@ def download_huggingface_datasets(force: bool = False) -> dict[str, Path]:
     """
     downloader = HuggingFaceDownloader()
     return downloader.download_all_defaults(force=force)
-
