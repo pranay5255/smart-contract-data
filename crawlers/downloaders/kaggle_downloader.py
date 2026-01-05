@@ -2,19 +2,20 @@
 Kaggle dataset downloader.
 
 Downloads datasets from Kaggle for smart contract vulnerability analysis.
-Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables.
+Uses the Kaggle CLI, which reads credentials from ~/.kaggle/kaggle.json
+or KAGGLE_USERNAME/KAGGLE_KEY environment variables.
 """
 from __future__ import annotations
 
 import json
 import os
 import shutil
-import zipfile
+import subprocess
 from pathlib import Path
 from typing import Optional
 
 from config.settings import DATASETS_DIR, KAGGLE_USERNAME, KAGGLE_KEY
-from utils.helpers import ensure_dir, sanitize_filename
+from utils.helpers import ensure_dir, sanitize_filename, load_sources_config
 from utils.logger import log
 from utils.rate_limiter import get_rate_limiter
 
@@ -44,54 +45,87 @@ class KaggleDownloader:
         },
     ]
 
-    def __init__(self, output_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        output_dir: Optional[Path] = None,
+        datasets: Optional[list[dict]] = None,
+    ):
         """
         Initialize Kaggle downloader.
 
         Args:
             output_dir: Directory to save datasets. Defaults to settings.DATASETS_DIR/kaggle
+            datasets: Optional list of dataset configs overriding defaults.
         """
         self.output_dir = ensure_dir(output_dir or DATASETS_DIR / "kaggle")
         self.rate_limiter = get_rate_limiter()
-        self._api = None
+        self.default_datasets = datasets or self._load_default_datasets()
+        self.kaggle_cli = shutil.which("kaggle")
+        self.cli_available = self.kaggle_cli is not None
 
-        # Validate credentials
-        if not KAGGLE_USERNAME or not KAGGLE_KEY:
+        if not self.cli_available:
+            log.warning("Kaggle CLI not found in PATH. Install `kaggle` to enable downloads.")
+
+        if not self._has_credentials():
             log.warning(
                 "Kaggle credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY "
-                "environment variables or create ~/.kaggle/kaggle.json"
+                "or create ~/.kaggle/kaggle.json via `kaggle config set`."
             )
 
-    def _get_api(self):
-        """
-        Get or create Kaggle API client.
-
-        Returns:
-            KaggleApi instance
-        """
-        if self._api is not None:
-            return self._api
-
-        try:
-            from kaggle.api.kaggle_api_extended import KaggleApi
-        except ImportError as exc:
-            log.error("kaggle package not installed. Run: pip install kaggle")
-            raise RuntimeError("kaggle package required") from exc
-
-        # Set up authentication
+    def _has_credentials(self) -> bool:
+        """Check for Kaggle credentials in env or ~/.kaggle/kaggle.json."""
         if KAGGLE_USERNAME and KAGGLE_KEY:
-            # Set environment variables for Kaggle
-            os.environ["KAGGLE_USERNAME"] = KAGGLE_USERNAME
-            os.environ["KAGGLE_KEY"] = KAGGLE_KEY
+            return True
+        return (Path.home() / ".kaggle" / "kaggle.json").exists()
 
+    def _ensure_cli(self) -> str:
+        """Ensure the Kaggle CLI is available."""
+        if not self.kaggle_cli:
+            raise RuntimeError("kaggle CLI not found. Install `kaggle` and ensure it is in PATH.")
+        return self.kaggle_cli
+
+    def _run_kaggle(self, args: list[str], capture_output: bool = True) -> subprocess.CompletedProcess:
+        """Run a Kaggle CLI command."""
+        cmd = [self._ensure_cli(), *args]
+        env = os.environ.copy()
+        if KAGGLE_USERNAME and KAGGLE_KEY:
+            env.setdefault("KAGGLE_USERNAME", KAGGLE_USERNAME)
+            env.setdefault("KAGGLE_KEY", KAGGLE_KEY)
         try:
-            self._api = KaggleApi()
-            self._api.authenticate()
-            log.info("Kaggle API authenticated successfully")
-            return self._api
-        except Exception as exc:
-            log.error(f"Failed to authenticate with Kaggle: {exc}")
-            raise
+            return subprocess.run(
+                cmd,
+                check=True,
+                text=True,
+                capture_output=capture_output,
+                env=env,
+            )
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() if exc.stderr else ""
+            if stderr:
+                log.error(f"Kaggle CLI error: {stderr}")
+            raise RuntimeError(f"Kaggle CLI command failed: {' '.join(cmd)}") from exc
+
+    def _load_default_datasets(self) -> list[dict]:
+        """Load default datasets from config/sources.yaml, with fallback defaults."""
+        try:
+            config = load_sources_config()
+        except Exception:
+            return self.DEFAULT_DATASETS
+
+        datasets = []
+        for entry in config.get("dataset_downloads", {}).get("kaggle", []):
+            dataset_id = entry.get("dataset_id")
+            if not dataset_id:
+                continue
+            datasets.append(
+                {
+                    "dataset_id": dataset_id,
+                    "description": entry.get("stats") or entry.get("name") or dataset_id,
+                    "priority": entry.get("priority", "medium"),
+                }
+            )
+
+        return datasets or self.DEFAULT_DATASETS
 
     def list_datasets(self, search_term: str = "smart contract") -> list[dict]:
         """
@@ -103,20 +137,10 @@ class KaggleDownloader:
         Returns:
             List of dataset metadata dicts
         """
-        api = self._get_api()
-
         with self.rate_limiter.limit(self.SERVICE_NAME):
-            results = api.dataset_list(search=search_term)
+            result = self._run_kaggle(["datasets", "list", "-s", search_term])
 
-        datasets = []
-        for dataset in results:
-            datasets.append({
-                "id": str(dataset),
-                "title": dataset.title if hasattr(dataset, "title") else str(dataset),
-                "size": dataset.size if hasattr(dataset, "size") else None,
-                "last_updated": str(dataset.lastUpdated) if hasattr(dataset, "lastUpdated") else None,
-                "download_count": dataset.downloadCount if hasattr(dataset, "downloadCount") else None,
-            })
+        datasets = self._parse_dataset_list_output(result.stdout)
 
         log.info(f"Found {len(datasets)} datasets matching '{search_term}'")
         return datasets
@@ -131,20 +155,24 @@ class KaggleDownloader:
         Returns:
             Dataset metadata dict
         """
-        api = self._get_api()
-        owner, name = dataset_id.split("/")
-
-        with self.rate_limiter.limit(self.SERVICE_NAME):
-            files = api.dataset_list_files(owner, name)
+        dataset_dir = self._dataset_dir(dataset_id)
+        if not dataset_dir.exists():
+            return {"id": dataset_id, "files": [], "file_count": 0, "total_size": 0}
 
         file_list = []
         total_size = 0
-        for f in files.files:
-            size = f.size if hasattr(f, "size") else 0
-            file_list.append({
-                "name": f.name,
-                "size": size,
-            })
+        for file_path in dataset_dir.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if file_path.name == ".download_complete":
+                continue
+            size = file_path.stat().st_size
+            file_list.append(
+                {
+                    "name": str(file_path.relative_to(dataset_dir)),
+                    "size": size,
+                }
+            )
             total_size += size
 
         return {
@@ -153,6 +181,35 @@ class KaggleDownloader:
             "file_count": len(file_list),
             "total_size": total_size,
         }
+
+    def _dataset_dir(self, dataset_id: str) -> Path:
+        """Resolve the output directory for a dataset."""
+        safe_name = sanitize_filename(dataset_id.replace("/", "_"))
+        return self.output_dir / safe_name
+
+    @staticmethod
+    def _parse_dataset_list_output(output: str) -> list[dict]:
+        """Parse `kaggle datasets list` output into minimal metadata."""
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        if not lines:
+            return []
+        if lines[0].lower().startswith("ref"):
+            lines = lines[1:]
+        datasets = []
+        for line in lines:
+            parts = line.split()
+            if not parts:
+                continue
+            datasets.append(
+                {
+                    "id": parts[0],
+                    "title": None,
+                    "size": None,
+                    "last_updated": None,
+                    "download_count": None,
+                }
+            )
+        return datasets
 
     def download_dataset(
         self,
@@ -171,11 +228,11 @@ class KaggleDownloader:
         Returns:
             Path to downloaded dataset directory
         """
-        api = self._get_api()
-
         # Create dataset directory
-        safe_name = sanitize_filename(dataset_id.replace("/", "_"))
-        dataset_dir = ensure_dir(self.output_dir / safe_name)
+        dataset_dir = self._dataset_dir(dataset_id)
+        if force and dataset_dir.exists():
+            shutil.rmtree(dataset_dir)
+        dataset_dir = ensure_dir(dataset_dir)
 
         # Check if already downloaded
         marker_file = dataset_dir / ".download_complete"
@@ -187,11 +244,10 @@ class KaggleDownloader:
 
         try:
             with self.rate_limiter.limit(self.SERVICE_NAME):
-                api.dataset_download_files(
-                    dataset_id,
-                    path=str(dataset_dir),
-                    unzip=unzip,
-                )
+                cmd = ["datasets", "download", "-d", dataset_id, "-p", str(dataset_dir)]
+                if unzip:
+                    cmd.append("--unzip")
+                self._run_kaggle(cmd, capture_output=False)
 
             # Create completion marker
             marker_file.touch()
@@ -229,7 +285,7 @@ class KaggleDownloader:
         """
         results = {}
 
-        for dataset_info in self.DEFAULT_DATASETS:
+        for dataset_info in self.default_datasets:
             dataset_id = dataset_info["dataset_id"]
             try:
                 path = self.download_dataset(dataset_id, force=force)
@@ -249,7 +305,7 @@ class KaggleDownloader:
         """
         status = {}
 
-        for dataset_info in self.DEFAULT_DATASETS:
+        for dataset_info in self.default_datasets:
             dataset_id = dataset_info["dataset_id"]
             safe_name = sanitize_filename(dataset_id.replace("/", "_"))
             dataset_dir = self.output_dir / safe_name
@@ -282,4 +338,3 @@ def download_kaggle_datasets(force: bool = False) -> dict[str, Path]:
     """
     downloader = KaggleDownloader()
     return downloader.download_all_defaults(force=force)
-
