@@ -76,7 +76,7 @@ class BaseScraper(ABC):
 | Task | File | Est. Lines | Priority |
 |------|------|------------|----------|
 | Rate limiter | `utils/rate_limiter.py` | ~80 | MEDIUM |
-| Submodule handler | `cloners/submodule_handler.py` | ~80 | LOW |
+
 
 ---
 
