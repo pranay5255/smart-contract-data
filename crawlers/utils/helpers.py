@@ -13,9 +13,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from config.settings import RETRY_CONFIG, BASE_DIR
 
 
-def load_sources_config() -> dict:
+def load_sources_config(config_path: Optional[Path] = None) -> dict:
     """Load the sources configuration from YAML."""
-    config_path = BASE_DIR / "config" / "sources.yaml"
+    config_path = Path(config_path) if config_path else BASE_DIR / "config" / "sources.yaml"
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 

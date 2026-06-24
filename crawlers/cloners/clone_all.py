@@ -17,6 +17,25 @@ from sources.source_types import Priority
 from utils.logger import log
 
 
+def summarize_sources(sources) -> dict:
+    """Build a no-op summary for dry-runs or empty selections."""
+    summary = {
+        "total": len(sources),
+        "cloned": 0,
+        "updated": 0,
+        "failed": 0,
+        "by_category": {},
+        "by_priority": {},
+        "errors": [],
+    }
+
+    for source in sources:
+        summary["by_category"].setdefault(source.category, {"success": 0, "failed": 0})
+        summary["by_priority"].setdefault(source.priority.value, {"success": 0, "failed": 0})
+
+    return summary
+
+
 def clone_all_repos(
     categories: Optional[list[str]] = None,
     priority_filter: Optional[Priority] = None,
@@ -42,7 +61,13 @@ def clone_all_repos(
         if invalid_categories:
             log.error(f"Invalid categories: {invalid_categories}")
             log.info(f"Available categories: {available_categories}")
-            return
+            summary = summarize_sources([])
+            summary["failed"] = len(invalid_categories)
+            summary["errors"] = [
+                {"category": category, "error": "Invalid category"}
+                for category in sorted(invalid_categories)
+            ]
+            return [], summary
 
         process_categories = categories
     else:
@@ -61,7 +86,7 @@ def clone_all_repos(
 
     if not all_sources:
         log.warning("No sources found matching criteria")
-        return
+        return [], summarize_sources([])
 
     log.info(f"Found {len(all_sources)} repositories to clone")
 
@@ -74,7 +99,7 @@ def clone_all_repos(
             print(f"  [{source.priority.value.upper()}] {source.name} ({source.category})")
             print(f"    URL: {source.url}")
         print("="*60 + "\n")
-        return
+        return [], summarize_sources(all_sources)
 
     # Clone each repository
     results = []
@@ -166,7 +191,7 @@ def main():
         print()
         return
 
-    priority = Priority(args.priority.upper()) if args.priority else None
+    priority = Priority(args.priority.lower()) if args.priority else None
 
     clone_all_repos(
         categories=args.categories,

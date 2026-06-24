@@ -84,7 +84,7 @@ Examples:
         return
 
     # Convert priority to enum
-    priority_enum = Priority(args.priority.upper()) if args.priority else None
+    priority_enum = Priority(args.priority.lower()) if args.priority else None
 
     # Run clone
     log.info("Starting GitHub repository download")

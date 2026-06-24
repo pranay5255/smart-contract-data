@@ -5,10 +5,21 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # Base paths
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = BASE_DIR.parent
+load_dotenv(PROJECT_DIR / ".env")
+os.environ.setdefault("KAGGLE_CONFIG_DIR", str(PROJECT_DIR / ".kaggle"))
+
+
+def _env_value(name: str) -> str | None:
+    """Return configured env values while ignoring template placeholders."""
+    value = os.getenv(name)
+    if not value or value.lower().startswith("your_"):
+        return None
+    return value
+
+
 OUTPUT_DIR = BASE_DIR / "output"
 REPOS_DIR = OUTPUT_DIR / "repos"
 REPORTS_DIR = OUTPUT_DIR / "reports"
@@ -20,10 +31,10 @@ for dir_path in [REPOS_DIR, REPORTS_DIR, DATASETS_DIR, EXPLOITS_DIR]:
     dir_path.mkdir(parents=True, exist_ok=True)
 
 # API Keys (from environment)
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME")
-KAGGLE_KEY = os.getenv("KAGGLE_KEY")
-HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+GITHUB_TOKEN = _env_value("GITHUB_TOKEN")
+KAGGLE_USERNAME = _env_value("KAGGLE_USERNAME")
+KAGGLE_KEY = _env_value("KAGGLE_KEY")
+HUGGINGFACE_TOKEN = _env_value("HUGGINGFACE_TOKEN")
 
 # Rate limiting settings
 RATE_LIMITS = {

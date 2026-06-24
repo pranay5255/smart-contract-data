@@ -7,6 +7,7 @@ playwright>=1.40.0
 
 # GitHub API
 PyGithub>=2.1.0
+GitPython>=3.1.0
 
 # Dataset platforms
 kaggle>=1.5.16

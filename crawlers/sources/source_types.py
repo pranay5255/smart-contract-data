@@ -42,8 +42,8 @@ class DataType(Enum):
 class BaseSource:
     """Base class for all data sources."""
     name: str
-    source_type: SourceType
     data_types: list[str]
+    source_type: SourceType = field(init=False)
     priority: Priority = Priority.MEDIUM
     enabled: bool = True
     metadata: dict = field(default_factory=dict)

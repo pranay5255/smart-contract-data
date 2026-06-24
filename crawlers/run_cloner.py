@@ -52,7 +52,7 @@ def clone_github_repos(categories=None, priority=None, dry_run=False):
     """Clone GitHub repositories."""
     from cloners.clone_all import clone_all_repos
 
-    priority_enum = Priority(priority.upper()) if priority else None
+    priority_enum = Priority(priority.lower()) if priority else None
 
     clone_all_repos(
         categories=categories,

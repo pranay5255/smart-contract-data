@@ -8,9 +8,12 @@ are properly set up before running data download scripts.
 import sys
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add crawlers to path
 sys.path.insert(0, str(Path(__file__).parent / "crawlers"))
+load_dotenv(Path(__file__).parent / ".env")
+os.environ.setdefault("KAGGLE_CONFIG_DIR", str(Path(__file__).parent / ".kaggle"))
 
 
 def print_section(title: str):
@@ -51,11 +54,11 @@ def verify_required_packages() -> dict:
     required_packages = {
         "Core": [
             ("requests", "HTTP requests"),
-            ("pyyaml", "YAML parsing"),
+            ("yaml", "YAML parsing (PyYAML)"),
             ("loguru", "Logging"),
         ],
         "GitHub": [
-            ("gitpython", "Git operations (GitPython)"),
+            ("git", "Git operations (GitPython)"),
         ],
         "Kaggle": [
             ("kaggle", "Kaggle API"),
@@ -127,7 +130,7 @@ def verify_environment_variables() -> dict:
 
         for var_name, var_info in vars_dict.items():
             value = os.getenv(var_name)
-            is_set = bool(value)
+            is_set = bool(value) and not value.lower().startswith("your_")
 
             if var_info["required"]:
                 status = check_status(

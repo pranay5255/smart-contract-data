@@ -90,7 +90,7 @@ def main():
 
     args = parser.parse_args()
 
-    priority = Priority(args.priority.upper()) if args.priority else None
+    priority = Priority(args.priority.lower()) if args.priority else None
 
     clone_aggregator_repos(priority_filter=priority)
 

@@ -24,7 +24,6 @@ def check_environment():
     print("="*60)
 
     checks = {
-        "GITHUB_TOKEN": GITHUB_TOKEN is not None,
         "REPOS_DIR exists": REPOS_DIR.exists(),
     }
 
@@ -37,10 +36,14 @@ def check_environment():
     if not all_passed:
         print("\n⚠ Some environment checks failed!")
         print("  Make sure you have:")
-        print("  1. Created .env file with GITHUB_TOKEN")
+        print("  1. Created .env file from .env.example")
         print("  2. Run the setup from the project root")
     else:
         print("\n✓ All environment checks passed!")
+        if GITHUB_TOKEN:
+            print("  ✓ GITHUB_TOKEN configured")
+        else:
+            print("  ⚠ GITHUB_TOKEN not set - API access will be rate limited")
 
     print("="*60)
 

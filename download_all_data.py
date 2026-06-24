@@ -48,7 +48,7 @@ def download_github_repos(priority: str = "high", dry_run: bool = False):
     if dry_run:
         log.info("DRY RUN MODE - No actual downloads will occur")
 
-    priority_enum = Priority(priority.upper()) if priority else None
+    priority_enum = Priority(priority.lower()) if priority else None
 
     results, summary = clone_all_repos(
         categories=None,  # All categories
