@@ -13,3 +13,4 @@
 2026-01-03 20:25:36 | INFO     | __main__:_summarize_dataset_results:27 - HuggingFace datasets: success=0 failed=1
 2026-01-03 20:31:09 | INFO     | downloaders.hf_downloader:download_dataset:310 - Downloading dataset: Zellic/smart-contract-fiesta
 2026-01-03 20:31:09 | INFO     | downloaders.hf_downloader:_download_via_cli:213 - Using HuggingFace CLI for: Zellic/smart-contract-fiesta
+2026-06-24 22:07:27 | WARNING  | downloaders.kaggle_downloader:__init__:70 - Kaggle credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY or create ~/.kaggle/kaggle.json via `kaggle config set`.
