@@ -30,6 +30,7 @@ The current pass adds the first OCR service implementation and its setup documen
 - [HUMAN_REVIEW.md](HUMAN_REVIEW.md): Reviewer workflow, approval states, rejection reasons, and quality bar.
 - [POST_TRAINING_RECIPES.md](POST_TRAINING_RECIPES.md): Baseline data shapes for RL, SFT, DPO, and GRPO planning.
 - [POST_TRAINING_DATASET_SOURCES.md](POST_TRAINING_DATASET_SOURCES.md): Hugging Face and local dataset inventory for post-training source selection.
+- [LWM_POST_TRAINING_MATH.md](LWM_POST_TRAINING_MATH.md): LWM-only post-training math, exact-EVM verifier loop, and simulator-fidelity evals.
 - [DESIGN_QUESTIONS.md](DESIGN_QUESTIONS.md): Open decisions to resolve before or during implementation.
 
 ## Recommended Reading Order
