@@ -51,7 +51,7 @@ Gate:
 Tasks:
 
 - Render PDF pages to image inputs as needed.
-- Send pages to a Modal-hosted vLLM vision/OCR endpoint.
+- Send pages to the Modal-hosted SGLang `baidu/Unlimited-OCR` endpoint.
 - Store page-level OCR output with model metadata, endpoint version, confidence, warnings, and text.
 - Preserve page numbers and evidence references for downstream review.
 
@@ -62,7 +62,7 @@ Output:
 Gate:
 
 - OCR output preserves enough structure to identify finding headings, severity, affected components, and code references.
-- Exact OCR model selection remains deferred, but endpoint metadata is recorded.
+- Endpoint metadata records the SGLang backend, `Unlimited-OCR` model name, and endpoint version.
 
 ## Phase 3: Finding Extraction
 
