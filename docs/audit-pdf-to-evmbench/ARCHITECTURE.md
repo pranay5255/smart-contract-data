@@ -7,7 +7,7 @@ The pipeline converts audit PDFs into candidate EVMBench detect-mode tasks throu
 ```text
 raw PDFs
   -> pdf_inventory.jsonl
-  -> Modal-hosted vLLM OCR
+  -> Modal-hosted SGLang Unlimited-OCR
   -> extracted_pages/<pdf_id>.jsonl
   -> finding extraction
   -> normalized_findings/<pdf_id>.jsonl
@@ -29,13 +29,13 @@ v1 eligibility requires Solidity/EVM relevance. PDFs for non-EVM ecosystems stay
 
 ### OCR Service
 
-OCR is performed through a Modal-hosted vLLM vision/OCR endpoint. The exact model is deferred. The endpoint contract should preserve:
+OCR is performed through the Modal-hosted SGLang `baidu/Unlimited-OCR` endpoint documented in [OCR_MODAL_SGLANG.md](OCR_MODAL_SGLANG.md). The endpoint contract should preserve:
 
 - PDF ID and page number.
 - OCR text.
 - Any detected layout blocks, tables, or code blocks when available.
 - Confidence or quality signals when available.
-- Model name, model version, endpoint version, and request timestamp.
+- Model name, backend, endpoint version, and request timestamp.
 
 The OCR layer should be idempotent. Re-running a page with the same model and input checksum should either reuse the existing page record or write a new versioned record.
 
