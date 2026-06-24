@@ -12,7 +12,7 @@ These questions should stay visible during implementation. They are grouped by a
 
 ## OCR
 
-- Which vLLM vision/OCR model should the Modal endpoint use for the feasibility batch?
+- What prompt, mode, and page-range settings should the SGLang Unlimited-OCR endpoint use for the feasibility batch?
 - Should OCR run page-by-page, by page range, or with multi-page context?
 - What confidence or quality signals are reliable enough to gate extraction?
 - How should tables, footnotes, code snippets, and two-column layouts be represented?
