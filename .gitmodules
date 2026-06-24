@@ -4,3 +4,6 @@
 [submodule "yudai-swe-agent"]
 	path = yudai-swe-agent
 	url = https://github.com/pranay5255/yudai-swe-agent.git
+[submodule "frontier-evals"]
+	path = frontier-evals
+	url = https://github.com/pranay5255/frontier-evals.git
