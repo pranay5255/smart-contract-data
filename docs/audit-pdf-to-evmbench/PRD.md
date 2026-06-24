@@ -24,7 +24,7 @@ The pipeline needs to separate mechanical extraction from human task admission.
 v1 includes:
 
 - Solidity/EVM audit PDF inventory.
-- PDF page OCR through a Modal-hosted vLLM vision/OCR endpoint.
+- PDF page OCR through a Modal-hosted SGLang `baidu/Unlimited-OCR` endpoint.
 - Finding extraction from OCR text and page evidence.
 - Normalization of candidate loss-of-funds findings.
 - Repository and base-commit matching.
@@ -42,7 +42,7 @@ v1 explicitly targets detect mode only. A v1 candidate may include only the file
 - Modify nanoeval, Alcatraz, agent launch, or existing EVMBench runtime behavior.
 - Automatically copy generated candidates into `frontier-evals/project/evmbench/audits`.
 - Treat OCR output as trusted without review.
-- Solve exact OCR model selection in the PRD. The endpoint is Modal-hosted vLLM vision/OCR, but the model remains a deferred implementation decision.
+- Replace human review with automated trust in OCR output.
 
 ## Functional Requirements
 
