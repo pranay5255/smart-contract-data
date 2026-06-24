@@ -32,7 +32,7 @@ Example:
 
 ## `extracted_pages/<pdf_id>.jsonl`
 
-Purpose: store page-level OCR output from the Modal-hosted vLLM vision/OCR endpoint.
+Purpose: store page-level OCR output from the Modal-hosted SGLang `baidu/Unlimited-OCR` endpoint.
 
 Required fields:
 
@@ -57,7 +57,7 @@ Optional fields:
 Example:
 
 ```json
-{"pdf_id":"2024-05-loop-code4rena-audit-3f2a91c0","page_number":12,"page_image_sha256":"8ab1...","ocr_text":"H-01 Availability of deposit invariant can be bypassed...","ocr_model":"deferred-vllm-ocr-model","ocr_model_version":"unknown","ocr_endpoint_version":"modal-ocr-v1","confidence":0.92,"warnings":[],"layout_blocks":[],"tables":[],"code_blocks":[],"created_at":"2026-06-24T00:05:00Z"}
+{"pdf_id":"2024-05-loop-code4rena-audit-3f2a91c0","page_number":12,"page_image_sha256":"8ab1...","ocr_text":"H-01 Availability of deposit invariant can be bypassed...","ocr_model":"Unlimited-OCR","ocr_model_version":"baidu/Unlimited-OCR","ocr_endpoint_version":"modal-sglang-unlimited-ocr-v1","confidence":null,"warnings":[],"layout_blocks":[],"tables":[],"code_blocks":[],"created_at":"2026-06-24T00:05:00Z"}
 ```
 
 ## `normalized_findings/<pdf_id>.jsonl`
@@ -253,8 +253,8 @@ Example:
     "source_uri": "https://example.com/audits/loop.pdf"
   },
   "ocr": {
-    "endpoint": "modal-hosted-vllm-ocr",
-    "model": "deferred",
+    "endpoint": "modal-sglang-unlimited-ocr-v1",
+    "model": "Unlimited-OCR",
     "page_records": "extracted_pages/2024-05-loop-code4rena-audit-3f2a91c0.jsonl"
   },
   "repo_match": {
