@@ -1,4 +1,21 @@
+# Local environment
 .env
+.venv/
+venv/
+
+# OS/editor noise
 .DS_Store
-crawlers/output/
+
+# Python caches
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# JavaScript dependencies
+node_modules/
+
+# Generated/downloaded data
+crawlers/output/
+hf_exports/
