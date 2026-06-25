@@ -1,0 +1,36 @@
+hourly_rate_per_b200: 6.2496
+total_budget_usd: 1200.0
+notes:
+  pricing_source: https://modal.com/pricing
+  pricing_checked_utc: "2026-06-25"
+  policy: Use mostly 1x B200. Avoid 8x B200 except a short smoke.
+phases:
+  - name: stack_smoke
+    category: smoke
+    gpu_count: 1
+    hours: 6
+  - name: qwen25_7b_sft_qlora
+    category: sft
+    gpu_count: 1
+    hours: 20
+  - name: qwen25_7b_kd
+    category: kd
+    gpu_count: 1
+    hours: 24
+  - name: qwen25_7b_dpo
+    category: dpo
+    gpu_count: 1
+    hours: 20
+  - name: opd_rollout_generation
+    category: opd
+    gpu_count: 1
+    hours: 30
+  - name: opd_training
+    category: opd
+    gpu_count: 1
+    hours: 24
+  - name: evmbench_eval
+    category: eval
+    gpu_count: 1
+    hours: 20
+

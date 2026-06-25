@@ -4,11 +4,12 @@ This is the entry point for the audit-PDF-to-EVMBench experiment. It explains wh
 
 ## Current Objects And Artifacts
 
-- The documentation has been consolidated into six numbered files in this directory.
+- The documentation has been consolidated into seven numbered files in this directory.
 - The Modal SGLang Unlimited-OCR service is documented and intended to be served from `modal_apps/unlimited_ocr_sglang.py`.
 - OCR planning and execution tooling exists for chunked overnight runs: `scripts/ocr_pdf_make_chunks.py` and `scripts/ocr_modal_run_chunk.py`.
 - A current OCR chunk plan exists under `crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624`.
 - A raw-response materializer exists at `scripts/ocr_modal_materialize_pages.py` with coverage in `tests/test_ocr_modal_materialize_pages.py`.
+- AutoModel B200 post-training scaffolding exists under `configs/automodel_b200/`, `scripts/automodel_prepare_datasets.py`, `scripts/automodel_b200_budget.py`, `scripts/trl_dpo_train.py`, and `modal_apps/automodel_b200_post_training.py`.
 - Current raw OCR responses live under `crawlers/output/ocr_runs/unlimited_ocr_modal/raw/<run_id>/` when chunk runs are executed.
 - Current materialized OCR artifacts should live under `crawlers/output/ocr_runs/unlimited_ocr_modal/artifacts/<run_id>/`, including `extracted_pages/<pdf_id>.jsonl` and `materialize_summary.json`.
 - No generated candidate task folders, EVMBench registry/split updates, admitted audit folders, or post-training exports are current artifacts yet.
@@ -29,6 +30,7 @@ This is the entry point for the audit-PDF-to-EVMBench experiment. It explains wh
 4. `4_REVIEW_AND_ADMISSION.md`: human review, rejection reasons, candidate quality bar, leakage checks, and EVMBench admission.
 5. `5_POST_TRAINING_DATASETS_AND_RECIPES.md`: post-training source inventory and RL/SFT/DPO/GRPO record shapes.
 6. `6_LWM_SIMULATOR_TRAINING.md`: future-facing language-world-model simulator training math and evals.
+7. `7_AUTOMODEL_B200_POST_TRAINING.md`: AutoModel/TRL B200 configs, budget, Modal launcher, and run order.
 
 ## Recommended Reading Order
 
@@ -38,6 +40,7 @@ This is the entry point for the audit-PDF-to-EVMBench experiment. It explains wh
 4. Read `4_REVIEW_AND_ADMISSION.md` before admitting any generated task.
 5. Read `5_POST_TRAINING_DATASETS_AND_RECIPES.md` only after candidate/admitted task artifacts exist.
 6. Read `6_LWM_SIMULATOR_TRAINING.md` when planning simulator-style post-training beyond audit-report generation.
+7. Read `7_AUTOMODEL_B200_POST_TRAINING.md` before launching B200 SFT, KD, DPO, or FP8 smoke runs.
 
 ## Product Requirements
 ### Product Goal
@@ -70,7 +73,7 @@ v1 includes:
 - Repository and base-commit matching.
 - Candidate EVMBench detect-mode task folder generation.
 - Human review before admission.
-- Post-training data shape definitions for later RL, SFT, DPO, and GRPO work.
+- Post-training data shape definitions and AutoModel/TRL runner scaffolding for later RL, SFT, DPO, and GRPO work.
 
 v1 explicitly targets detect mode only. A v1 candidate may include only the files needed to evaluate whether an agent can produce `submission/audit.md` that detects known vulnerabilities.
 
@@ -153,11 +156,12 @@ Copy only approved candidates into the EVMBench audit directory. Run existing va
 #### Milestone 5: Post-Training Exports
 
 Export task and rollout data using the documented RL, SFT, DPO, and GRPO planning shapes.
+Use the AutoModel/TRL B200 configs only after reviewed export files exist.
 
 
 ## Current Status
 
-Status: design specification plus Modal SGLang OCR service, OCR chunk planning/run tooling, and raw-response materialization workflow.
+Status: design specification plus Modal SGLang OCR service, OCR chunk planning/run tooling, raw-response materialization workflow, and AutoModel/TRL B200 post-training scaffolding.
 
 The intended first implementation milestone is a small feasibility batch. The batch should prove that the pipeline can ingest a few audit PDFs, OCR them, extract loss-of-funds findings, match each finding to a repository and base commit, generate candidate detect-mode task folders, and route those candidates through human review.
 

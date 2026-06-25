@@ -60,7 +60,7 @@ For local Modal CLI auth, `modal setup` is also fine if you prefer browser auth.
 ### 2. Restore Uploaded Datasets From Hugging Face
 
 The uploaded datasets under `pranay5255` are documented in
-`docs/audit-pdf-to-evmbench/POST_TRAINING_DATASET_SOURCES.md`. The main repos are:
+`docs/audit-pdf-to-evmbench/5_POST_TRAINING_DATASETS_AND_RECIPES.md`. The main repos are:
 
 - `pranay5255/smart-contract-audit-pdfs`
 - `pranay5255/smart-contract-audit-nonpdf-artifacts`

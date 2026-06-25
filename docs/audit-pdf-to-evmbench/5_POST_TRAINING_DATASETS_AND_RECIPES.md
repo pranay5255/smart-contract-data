@@ -6,6 +6,7 @@ This document combines the post-training record recipes and source dataset inven
 
 - Public/source dataset references are documented here for planning.
 - No post-training JSONL exports are current artifacts yet.
+- Runnable AutoModel/TRL B200 scaffolding is documented separately in `7_AUTOMODEL_B200_POST_TRAINING.md`.
 - Raw audit PDFs and OCR artifacts can become training sources only after normalization, review, provenance capture, and split decisions.
 
 ## Future Post-Training Work
@@ -17,6 +18,8 @@ This document combines the post-training record recipes and source dataset inven
 
 ## Post-Training Recipes
 This document defines baseline data shapes for later post-training work. It does not prescribe a training implementation.
+
+For the current cheap-training implementation path, use `7_AUTOMODEL_B200_POST_TRAINING.md`.
 
 The first usable task type is EVMBench detect mode. Patch and exploit tasks are deferred until detect-mode extraction quality is proven.
 

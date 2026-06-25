@@ -1,0 +1,100 @@
+recipe: TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 1
+  ckpt_every_steps: 200
+  val_every_steps: 100
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 30
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 5255
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: Qwen/Qwen2.5-Coder-7B-Instruct
+  torch_dtype: bf16
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  target_modules: "*_proj"
+  dim: 16
+  alpha: 32
+  dropout: 0.05
+
+quantization:
+  load_in_4bit: true
+  load_in_8bit: false
+  bnb_4bit_compute_dtype: bfloat16
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_quant_type: nf4
+  bnb_4bit_quant_storage: bfloat16
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.column_mapped_text_instruction_dataset.ColumnMappedTextInstructionDataset
+  path_or_dataset_id:
+    - /data/automodel/sft_train.jsonl
+  column_mapping:
+    context: context
+    question: question
+    answer: answer
+  answer_only_loss_mask: true
+  use_hf_chat_template: true
+  seq_length: 8192
+  padding: do_not_pad
+  truncation: true
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: true
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.column_mapped_text_instruction_dataset.ColumnMappedTextInstructionDataset
+  path_or_dataset_id:
+    - /data/automodel/sft_validation.jsonl
+  column_mapping:
+    context: context
+    question: question
+    answer: answer
+  answer_only_loss_mask: true
+  use_hf_chat_template: true
+  seq_length: 8192
+  padding: do_not_pad
+  truncation: true
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: false
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-5
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  weight_decay: 0.0
+
+distributed:
+  strategy: fsdp2
+  dp_size: null
+  tp_size: 1
+  cp_size: 1
+  pp_size: 1
+  sequence_parallel: false
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: /outputs/automodel/qwen25-coder-7b-qlora-sft
+  model_save_format: safetensors
+  save_consolidated: false
+

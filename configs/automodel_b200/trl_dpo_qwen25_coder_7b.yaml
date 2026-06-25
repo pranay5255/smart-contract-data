@@ -1,0 +1,35 @@
+model_name_or_path: Qwen/Qwen2.5-Coder-7B-Instruct
+train_file: /data/automodel/dpo_train.jsonl
+eval_file: /data/automodel/dpo_validation.jsonl
+output_dir: /outputs/automodel/qwen25-coder-7b-dpo
+
+training:
+  beta: 0.1
+  learning_rate: 1.0e-5
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 8192
+  max_prompt_length: 4096
+  logging_steps: 10
+  save_steps: 200
+  bf16: true
+  gradient_checkpointing: true
+  remove_unused_columns: false
+
+peft:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  bias: none
+  task_type: CAUSAL_LM
+
