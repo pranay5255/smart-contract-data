@@ -9,7 +9,9 @@ This is the operational runbook for the current OCR portion of the experiment: d
 - Current chunk plan: `crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624`.
 - Current raw output root for that plan: `crawlers/output/ocr_runs/unlimited_ocr_modal/raw/audit_pdf_chunks_target2500_20260624`.
 - Current materialized output root for that plan: `crawlers/output/ocr_runs/unlimited_ocr_modal/artifacts/audit_pdf_chunks_target2500_20260624`.
-- Current scripts: `scripts/ocr_pdf_make_chunks.py`, `scripts/ocr_modal_run_chunk.py`, `scripts/ocr_modal_client.py`, and `scripts/ocr_modal_materialize_pages.py`.
+- Current scripts: `scripts/ocr_pdf_make_chunks.py`, `scripts/ocr_modal_run.py`,
+  `scripts/ocr_modal_run_chunk.py`, `scripts/ocr_modal_client.py`, and
+  `scripts/ocr_modal_materialize_pages.py`.
 
 ## Future OCR Work
 
@@ -148,13 +150,13 @@ Run a health check:
 ```shell
 export OCR_API_KEY='<token>'
 export OCR_URL='https://your-modal-url'
-python scripts/ocr_modal_client.py --url "$OCR_URL" --health
+python3 scripts/ocr_modal_client.py --url "$OCR_URL" --health
 ```
 
 Verify unauthorized requests return `401`, then OCR pages 1-2:
 
 ```shell
-python scripts/ocr_modal_client.py \
+python3 scripts/ocr_modal_client.py \
   --url "$OCR_URL" \
   --check-unauthorized \
   --kind pdf \
@@ -220,10 +222,35 @@ Inventory:
 
 Coverage agreements are excluded by default because they are not audit reports. Regenerate with `--include-excluded` if they should be OCRed too.
 
+## Current Run Status
+
+Last verified: 2026-06-26 18:07 UTC.
+
+- Completed chunks: `chunk_0000`, `chunk_0001`, and `chunk_0002`.
+- Remaining chunks: `chunk_0003` through `chunk_0030` (`28` chunks).
+- Next chunk to process: `chunk_0003`.
+- Completed OCR coverage: `390` PDFs, `7,442` pages, and `2,012 / 2,012` expected page-window raw responses.
+- Raw response validation: `0` bad raw JSON files and `0` missing expected windows across the completed chunks.
+- Materialized page outputs: `390` `extracted_pages/<pdf_id>.jsonl` files with `7,442` page records.
+- Materialization validation: `0` missing PDF artifacts and `0` page-count mismatches for completed chunks.
+
+Completed chunk details:
+
+| Chunk | PDFs | Pages | Raw windows | Materialized page records | Status |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `chunk_0000` | 130 | 2,481 | 672 / 672 | 2,481 | ok |
+| `chunk_0001` | 130 | 2,481 | 671 / 671 | 2,481 | ok |
+| `chunk_0002` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+
+Note: when materializing one chunk at a time, `materialize_summary.json` is
+overwritten by the most recent chunk materialization. Verify multi-chunk
+coverage from the raw chunk summaries and the `extracted_pages/<pdf_id>.jsonl`
+files, not only from the latest `materialize_summary.json`.
+
 ## Regenerate Chunks
 
 ```bash
-python scripts/ocr_pdf_make_chunks.py \
+python3 scripts/ocr_pdf_make_chunks.py \
   --run-id audit_pdf_chunks_target2500_20260624 \
   --target-pages-per-chunk 2500 \
   --max-pdfs-per-chunk 300 \
@@ -232,14 +259,88 @@ python scripts/ocr_pdf_make_chunks.py \
 
 Use `--chunk-count N` instead of `--target-pages-per-chunk` if you want an exact number of chunks.
 
-## Run One Chunk
+## Preferred Progress Runner
+
+Use `scripts/ocr_modal_run.py` for interactive `tmux` runs. It wraps the
+resumable chunk runner, shows a live terminal progress bar, writes runner output
+to `crawlers/output/ocr_runs/unlimited_ocr_modal/logs/`, and materializes the
+chunk after a successful run.
+
+The wrapper defaults to:
+
+- URL: `https://pranay5255-80470--unlimited-ocr-sglang-create-asgi-app.modal.run`
+- API key: `OCR_API_KEY`, falling back to `/tmp/unlimited_ocr_secret.json`
+- Run id: `audit_pdf_chunks_target2500_20260624`
+- Raw root: `crawlers/output/ocr_runs/unlimited_ocr_modal/raw/audit_pdf_chunks_target2500_20260624`
+- Artifact root: `crawlers/output/ocr_runs/unlimited_ocr_modal/artifacts/audit_pdf_chunks_target2500_20260624`
+- OCR settings: `--page-window-size 4 --mode pages --dpi 300 --timeout 1800`
+
+After the first three chunks have completed, continue with the next incomplete
+chunk after `chunk_0002`:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+python3 scripts/ocr_modal_run.py next \
+  --after 2
+```
+
+Run a specific planned chunk:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+python3 scripts/ocr_modal_run.py chunk 3
+```
+
+The chunk argument accepts `3`, `0003`, `chunk_0003`, or a direct chunk JSONL
+path.
+
+Run one ad-hoc PDF through the same resumable raw/materialized layout:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+python3 scripts/ocr_modal_run.py pdf \
+  "crawlers/output/repos/audit_repos/path/to/report.pdf"
+```
+
+Do not redirect stdout with `>>` when using this wrapper; stdout is used for the
+live progress bar. Use `--log-file` only when you want to override the internal
+log path.
+
+Start the progress runner in a fresh detached `tmux` session:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+tmux new-session \
+  -d \
+  -s ocr_chunk_0003 \
+  'bash -lc "
+    cd /home/experiments_base/smart-contract-data
+    python3 scripts/ocr_modal_run.py next --after 2
+  "'
+```
+
+Attach to see the progress bar:
+
+```bash
+tmux attach \
+  -t ocr_chunk_0003
+```
+
+If the session exits unexpectedly, rerun the same command. Resume is enabled by
+default and completed page-window raw responses are skipped.
+
+## Low-Level Run One Chunk
 
 ```bash
 export OCR_URL="https://pranay5255-80470--unlimited-ocr-sglang-create-asgi-app.modal.run"
 export OCR_API_KEY="..."
 export OCR_OUTPUT_ROOT="crawlers/output/ocr_runs/unlimited_ocr_modal/raw/audit_pdf_chunks_target2500_20260624"
 
-python scripts/ocr_modal_run_chunk.py \
+python3 scripts/ocr_modal_run_chunk.py \
   --url "$OCR_URL" \
   --chunk crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624/chunks/chunk_0000.jsonl \
   --output-root "$OCR_OUTPUT_ROOT" \
@@ -261,7 +362,7 @@ It also writes per-window summaries, `pdf_status.json` per PDF, `chunk_progress.
 
 ```bash
 for chunk in crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624/chunks/chunk_*.jsonl; do
-  python scripts/ocr_modal_run_chunk.py \
+  python3 scripts/ocr_modal_run_chunk.py \
     --url "$OCR_URL" \
     --chunk "$chunk" \
     --output-root "$OCR_OUTPUT_ROOT" \
@@ -272,11 +373,16 @@ for chunk in crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_targe
 done
 ```
 
-Run one chunk at a time with the current Modal app because it is configured with one H100 and `max_containers=1`. Parallel chunk runners will contend for the same deployed service unless the Modal app capacity is changed.
+Run one chunk at a time with the current Modal app because it is configured with
+one H100 and `max_containers=1`. Parallel chunk runners will contend for the
+same deployed service unless the Modal app capacity is changed.
 
 ## Resume Behavior
 
-The runner is resumable by default. If a `pages_XXXX_YYYY.raw.json` exists and parses as a completed API response, that page window is skipped. Rerun the same chunk command after network failures or timeouts.
+Both the progress wrapper and low-level runner are resumable by default. If a
+`pages_XXXX_YYYY.raw.json` exists and parses as a completed API response, that
+page window is skipped. Rerun the same chunk command after network failures or
+timeouts.
 
 Use `--no-resume` only when you intentionally want to overwrite existing raw responses.
 
@@ -285,7 +391,7 @@ Use `--no-resume` only when you intentionally want to overwrite existing raw res
 Dry-run chunk layout without API credentials:
 
 ```bash
-python scripts/ocr_modal_run_chunk.py \
+python3 scripts/ocr_modal_run_chunk.py \
   --url https://example.invalid \
   --chunk crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624/chunks/chunk_0000.jsonl \
   --output-root /tmp/ocr_chunk_dry_run \
@@ -297,7 +403,7 @@ python scripts/ocr_modal_run_chunk.py \
 One-PDF, one-page API smoke:
 
 ```bash
-python scripts/ocr_modal_run_chunk.py \
+python3 scripts/ocr_modal_run_chunk.py \
   --url "$OCR_URL" \
   --chunk crawlers/output/ocr_runs/unlimited_ocr_modal/audit_pdf_chunks_target2500_20260624/chunks/chunk_0000.jsonl \
   --output-root /tmp/ocr_chunk_real_smoke \
@@ -320,7 +426,7 @@ export OCR_RUN_ID="audit_pdf_chunks_target2500_20260624"
 export OCR_RAW_ROOT="crawlers/output/ocr_runs/unlimited_ocr_modal/raw/$OCR_RUN_ID"
 export OCR_ARTIFACT_ROOT="crawlers/output/ocr_runs/unlimited_ocr_modal/artifacts/$OCR_RUN_ID"
 
-python scripts/ocr_modal_materialize_pages.py \
+python3 scripts/ocr_modal_materialize_pages.py \
   --raw-root "$OCR_RAW_ROOT" \
   --artifact-root "$OCR_ARTIFACT_ROOT"
 ```
@@ -328,7 +434,7 @@ python scripts/ocr_modal_materialize_pages.py \
 Materialize a single chunk when debugging or recovering a partial run:
 
 ```bash
-python scripts/ocr_modal_materialize_pages.py \
+python3 scripts/ocr_modal_materialize_pages.py \
   --raw-root "$OCR_RAW_ROOT" \
   --artifact-root "$OCR_ARTIFACT_ROOT" \
   --chunk-id chunk_0000
@@ -357,7 +463,7 @@ pytest tests/test_ocr_modal_materialize_pages.py
 Inspect summary counts after a real run:
 
 ```bash
-python -m json.tool "$OCR_ARTIFACT_ROOT/materialize_summary.json" | head -n 80
+python3 -m json.tool "$OCR_ARTIFACT_ROOT/materialize_summary.json" | head -n 80
 ```
 
 Check generated page files:
