@@ -9,9 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Scope:** This repo handles data gathering and experiment configuration ONLY. No actual training code - training runs on separate infrastructure.
 
 **Key Documents:**
-- `PRD.md` - Complete project requirements, model architecture, training pipeline
-- `TASKS.md` - Implementation tasks with specifications
-- `archive/` - Reference documents (dataSorucesReport.md, compass research)
+- `README.md` - Setup, OCR workflow, and command reference
+- `docs/audit-pdf-to-evmbench/` - Numbered OCR, conversion, review, and training runbooks
+- `PRD.md` - Project requirements, model architecture, and training pipeline
+- `TASKS.md` - Implementation task backlog and specifications
 
 ## Project Goals
 
@@ -60,18 +61,11 @@ smart-contract-data/
 │   ├── processors/              # Normalize to JSONL [TODO]
 │   └── utils/                   # Helpers, logging [DONE]
 │
-├── experiments/                 # Experiment configs [TODO]
-│   ├── ablations/               # YAML configs for ablation runs
-│   ├── final/                   # Final training configs
-│   └── evaluation/              # Eval harness scripts
-│
-├── synthetic/                   # Synthetic data generation [TODO]
-│   ├── hexacoder_pipeline.py
-│   ├── mini_swe_agent_runner.py
-│   └── foundry_validator.py
-│
-├── output/                      # Collected data
-├── archive/                     # Reference documents
+├── configs/automodel_b200/      # Post-training config templates
+├── docs/audit-pdf-to-evmbench/  # OCR, conversion, review, and training runbooks
+├── modal_apps/                  # Modal OCR and post-training apps
+├── scripts/                     # OCR, dataset, publishing, and training helpers
+├── tests/                       # Pytest suite
 ├── PRD.md                       # Project requirements
 ├── TASKS.md                     # Implementation tasks
 └── CLAUDE.md                    # This file
@@ -115,8 +109,9 @@ config = load_sources_config()  # Returns dict from sources.yaml
 | scrapers/ | ⚪ TODO | See TASKS.md Phase 1.2 |
 | downloaders/ | ⚪ TODO | See TASKS.md Phase 1.3 |
 | processors/ | ⚪ TODO | See TASKS.md Phase 2 |
-| synthetic/ | ⚪ TODO | See TASKS.md Phase 3 |
-| experiments/ | ⚪ TODO | See TASKS.md Phase 4 |
+| scripts/ | 🟡 In Progress | OCR, dataset prep, publishing, and training helpers |
+| modal_apps/ | 🟡 In Progress | Modal OCR and post-training apps |
+| configs/automodel_b200/ | 🟡 In Progress | Post-training config templates |
 
 ## Environment Variables
 
