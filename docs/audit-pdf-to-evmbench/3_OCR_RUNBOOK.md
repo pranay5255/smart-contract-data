@@ -224,15 +224,23 @@ Coverage agreements are excluded by default because they are not audit reports. 
 
 ## Current Run Status
 
-Last verified: 2026-06-26 18:07 UTC.
+Last verified: 2026-06-30 13:21 UTC.
 
-- Completed chunks: `chunk_0000`, `chunk_0001`, and `chunk_0002`.
-- Remaining chunks: `chunk_0003` through `chunk_0030` (`28` chunks).
-- Next chunk to process: `chunk_0003`.
-- Completed OCR coverage: `390` PDFs, `7,442` pages, and `2,012 / 2,012` expected page-window raw responses.
-- Raw response validation: `0` bad raw JSON files and `0` missing expected windows across the completed chunks.
-- Materialized page outputs: `390` `extracted_pages/<pdf_id>.jsonl` files with `7,442` page records.
-- Materialization validation: `0` missing PDF artifacts and `0` page-count mismatches for completed chunks.
+- Raw summaries present: `chunk_0000` through `chunk_0014` (`15` chunks).
+- Clean completed chunks: `chunk_0000` through `chunk_0012` and `chunk_0014`.
+- Partial chunk needing retry: `chunk_0013`.
+  - PDF: `pdf_003290_1e62efcf9b8b`
+  - Path: `audits/team/pdf/Spectra-security-review.pdf`
+  - Missing window: pages `9-12`
+  - Cause: transient SSL EOF during `/v1/ocr/pdf`
+  - Current artifact: `19 / 23` page records.
+- Active batch: `chunk_0015` through `chunk_0024` in tmux session `ocr_chunks_0015_0024`.
+- Remaining chunks after the active batch: `chunk_0025` through `chunk_0030` (`6` chunks), assuming the active batch completes cleanly.
+- OCR coverage through `chunk_0014`: `1,951` PDFs, `37,204` planned pages, and `10,041 / 10,042` raw response files.
+- Progress-event coverage through `chunk_0014`: `10,042 / 10,042` expected page-window events.
+- Raw response validation: `0` bad existing raw JSON files; `1` missing raw JSON window from `chunk_0013`.
+- Materialized page outputs through `chunk_0014`: `1,951` `extracted_pages/<pdf_id>.jsonl` files with `37,200` page records.
+- Materialization validation through `chunk_0014`: `0` missing PDF artifacts and `1` page-count mismatch from the same `chunk_0013` partial PDF.
 
 Completed chunk details:
 
@@ -241,11 +249,35 @@ Completed chunk details:
 | `chunk_0000` | 130 | 2,481 | 672 / 672 | 2,481 | ok |
 | `chunk_0001` | 130 | 2,481 | 671 / 671 | 2,481 | ok |
 | `chunk_0002` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0003` | 130 | 2,480 | 668 / 668 | 2,480 | ok |
+| `chunk_0004` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0005` | 130 | 2,480 | 667 / 667 | 2,480 | ok |
+| `chunk_0006` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0007` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0008` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0009` | 131 | 2,482 | 672 / 672 | 2,482 | ok |
+| `chunk_0010` | 130 | 2,480 | 670 / 670 | 2,480 | ok |
+| `chunk_0011` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0012` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
+| `chunk_0013` | 130 | 2,480 | 669 / 670 | 2,476 | partial_error: missing pages 9-12 for `pdf_003290_1e62efcf9b8b` |
+| `chunk_0014` | 130 | 2,480 | 669 / 669 | 2,480 | ok |
 
 Note: when materializing one chunk at a time, `materialize_summary.json` is
 overwritten by the most recent chunk materialization. Verify multi-chunk
 coverage from the raw chunk summaries and the `extracted_pages/<pdf_id>.jsonl`
 files, not only from the latest `materialize_summary.json`.
+
+Retry `chunk_0013` before declaring the first fifteen chunks fully clean:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+python3 scripts/ocr_modal_run.py chunk 13
+```
+
+The retry is resumable by default. It should skip existing raw responses and
+retry the missing `pages_0009_0012.raw.json` window for
+`pdf_003290_1e62efcf9b8b`, then re-materialize `chunk_0013`.
 
 ## Regenerate Chunks
 
@@ -275,14 +307,14 @@ The wrapper defaults to:
 - Artifact root: `crawlers/output/ocr_runs/unlimited_ocr_modal/artifacts/audit_pdf_chunks_target2500_20260624`
 - OCR settings: `--page-window-size 4 --mode pages --dpi 300 --timeout 1800`
 
-After the first three chunks have completed, continue with the next incomplete
-chunk after `chunk_0002`:
+After the active `chunk_0015` through `chunk_0024` batch completes, continue
+with the next incomplete chunk after `chunk_0024`:
 
 ```bash
 cd /home/experiments_base/smart-contract-data
 
 python3 scripts/ocr_modal_run.py next \
-  --after 2
+  --after 24
 ```
 
 Run a specific planned chunk:
@@ -290,10 +322,10 @@ Run a specific planned chunk:
 ```bash
 cd /home/experiments_base/smart-contract-data
 
-python3 scripts/ocr_modal_run.py chunk 3
+python3 scripts/ocr_modal_run.py chunk 25
 ```
 
-The chunk argument accepts `3`, `0003`, `chunk_0003`, or a direct chunk JSONL
+The chunk argument accepts `25`, `0025`, `chunk_0025`, or a direct chunk JSONL
 path.
 
 Run one ad-hoc PDF through the same resumable raw/materialized layout:
@@ -309,25 +341,41 @@ Do not redirect stdout with `>>` when using this wrapper; stdout is used for the
 live progress bar. Use `--log-file` only when you want to override the internal
 log path.
 
-Start the progress runner in a fresh detached `tmux` session:
+Start the next single progress runner in a fresh detached `tmux` session:
 
 ```bash
 cd /home/experiments_base/smart-contract-data
 
 tmux new-session \
   -d \
-  -s ocr_chunk_0003 \
+  -s ocr_chunk_0025 \
   'bash -lc "
     cd /home/experiments_base/smart-contract-data
-    python3 scripts/ocr_modal_run.py next --after 2
+    python3 scripts/ocr_modal_run.py next --after 24
   "'
+```
+
+Run a bounded sequential batch in a fresh detached `tmux` session. The current
+active batch uses this pattern for `chunk_0015` through `chunk_0024`:
+
+```bash
+cd /home/experiments_base/smart-contract-data
+
+tmux new-session -d -s ocr_chunks_0015_0024 bash
+tmux send-keys -t ocr_chunks_0015_0024 'set -euo pipefail' C-m
+tmux send-keys -t ocr_chunks_0015_0024 'for n in $(seq 15 24); do' C-m
+tmux send-keys -t ocr_chunks_0015_0024 '  printf "\n[%s] starting chunk_%04d\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$n"' C-m
+tmux send-keys -t ocr_chunks_0015_0024 '  python3 scripts/ocr_modal_run.py chunk "$n"' C-m
+tmux send-keys -t ocr_chunks_0015_0024 '  printf "\n[%s] finished chunk_%04d\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$n"' C-m
+tmux send-keys -t ocr_chunks_0015_0024 'done' C-m
+tmux send-keys -t ocr_chunks_0015_0024 'printf "\n[%s] completed chunks 0015-0024\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"' C-m
 ```
 
 Attach to see the progress bar:
 
 ```bash
 tmux attach \
-  -t ocr_chunk_0003
+  -t ocr_chunks_0015_0024
 ```
 
 If the session exits unexpectedly, rerun the same command. Resume is enabled by
